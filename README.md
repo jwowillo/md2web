@@ -11,8 +11,6 @@ Type `make`.
 Run `md2web`.
 
 ## TODO
-* Disallow navigation to main.
-* Only read md files and folders.
 * Add static file support. (Will require a CDN application.)
 * Add customization support. (Will require a CDN application.)
 * Favicon support. (Will require a CDN application.)

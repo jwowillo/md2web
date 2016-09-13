@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -72,7 +73,15 @@ func (c *controller) renderPage(
 	name, message string,
 	code trim.Code,
 ) (trim.Response, error) {
+	if filepath.Base(name) == "main" {
+		return c.renderPage(
+			"",
+			fmt.Sprintf("Page at '/%s doesn't exist.", name),
+			trim.Code(http.StatusNotFound),
+		)
+	}
 	content, err := ioutil.ReadFile(buildPath(name))
+	// If request is for a main page, re render with error message.
 	if err != nil {
 		if name == "" {
 			return nil, errors.New("Can't read file.")
@@ -134,13 +143,17 @@ func links(name string) []string {
 			if target[len(file.Name())-3:] == ".md" {
 				target = target[:len(file.Name())-3]
 				link += target
-			} else {
+				links = append(
+					links,
+					fmt.Sprintf(pattern, link, target),
+				)
+			} else if file.IsDir() {
 				link += target + "/"
+				links = append(
+					links,
+					fmt.Sprintf(pattern, link, target),
+				)
 			}
-			links = append(
-				links,
-				fmt.Sprintf(pattern, link, target),
-			)
 		}
 	}
 	return links
