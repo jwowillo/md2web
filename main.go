@@ -16,6 +16,8 @@ const (
 	template = ".md2web.template.html"
 	// defaultPort for server to listen at.
 	defaultPort = 5000
+	// static file folder.
+	static = "static"
 )
 
 // main runs the server on the given port or 5000 by default.
@@ -32,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	newServer(base, home+"/"+template).Run(port)
+	newServer(base, home+"/"+template, static, port).Run(port)
 }
 
 // getBase gets the base folder the trim.Server is running from.

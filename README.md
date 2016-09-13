@@ -11,6 +11,4 @@ Type `make`.
 Run `md2web`.
 
 ## TODO
-* Add static file support. (Will require a CDN application.)
-* Add customization support. (Will require a CDN application.)
-* Favicon support. (Will require a CDN application.)
+* Add customization support.
