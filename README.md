@@ -12,8 +12,7 @@ Run `md2web`.
 
 ## TODO
 * Disallow navigation to main.
-* Customize port.
 * Only read md files and folders.
-* Add static file support.
-* Favicon support.
-
+* Add static file support. (Will require a CDN application.)
+* Add customization support. (Will require a CDN application.)
+* Favicon support. (Will require a CDN application.)

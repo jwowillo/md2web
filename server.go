@@ -90,7 +90,7 @@ func (c *controller) renderPage(
 			"title":   linkify(name),
 			"message": message,
 			"links":   links(name),
-			"content": blackfriday.MarkdownCommon(content),
+			"content": string(blackfriday.MarkdownCommon(content)),
 		},
 		code,
 	), nil

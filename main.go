@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	newServer(base, home+template).Run(port)
+	newServer(base, home+"/"+template).Run(port)
 }
 
 // getBase gets the base folder the trim.Server is running from.
