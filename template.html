@@ -3,32 +3,33 @@
   <head>
     <meta charset="utf-8">
     <title>{{ base }}</title>
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 		<style>
 			* {
-				font-family: 'Open Sans', sans-serif;
+				font-family: Helvetica, Arial, Sans-Serif;
 				color: #262626;
 			}
+      #wrapper {
+        max-width: 720px;
+        margin: 0 auto;
+      }
 			p {
-        			line-height: 1.5em;
+        line-height: 1.5em;
 			}
 			code {
 				font-family: monospace;
 			}
 			body {
-				width: 720px;
-				margin: 0 auto;
 				background-color: #FDFDFD;
 			}
 			header {
-				margin: 25px;
+				padding: 25px;
 				font-size: 2.5em;
 				text-align: center;
 			}
 			header a {
 				color: #375eab;
 				font-weight: bold;
-				margin-right: 5px;
+				padding-right: 10px;
 				text-decoration: none;
 			}
 			header a:hover {
@@ -40,17 +41,17 @@
 			}
 			nav a {
 				text-decoration: none;
-				margin-right: 10px;
+				padding-right: 10px;
 			}
 			nav a:hover {
 				color: #375eab;
 			}
 			section {
-				margin: 25px;
+				padding: 25px;
 				font-size: 1.2em;
 			}
 			aside {
-				margin: 25px;
+				padding: 25px;
 				text-align: center;
 				color: red;
 				font-weight: bold;
@@ -58,17 +59,19 @@
 		</style>
   </head>
   <body>
-    <header>{{ title | safe }}</header>
-    <nav>
-      {% for link in links %}
-        {{ link | safe }}
-      {% endfor %}
-    </nav>
-    <aside>
-      {{ message }}
-    </aside>
-    <section>
-      {{ content | safe }}
-    </section>
+    <div id="wrapper">
+      <header>{{ title | safe }}</header>
+      <nav>
+        {% for link in links %}
+          {{ link | safe }}
+        {% endfor %}
+      </nav>
+      <aside>
+        {{ message }}
+      </aside>
+      <section>
+        {{ content | safe }}
+      </section>
+    </div>
   </body>
 </html>

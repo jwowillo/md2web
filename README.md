@@ -9,3 +9,11 @@ Type `make`.
 
 ## Run
 Run `md2web`.
+
+## TODO
+* Disallow navigation to main.
+* Customize port.
+* Only read md files and folders.
+* Add static file support.
+* Favicon support.
+

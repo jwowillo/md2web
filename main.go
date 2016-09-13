@@ -1,163 +1,73 @@
+// Package main runs a server which serves markdown files and folders as a
+// website.
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"errors"
 	"log"
-	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
-	"time"
-
-	"github.com/jwowillo/trim"
-	"github.com/jwowillo/trim/decorators"
-	"github.com/jwowillo/trim/handlers"
-	"github.com/jwowillo/trim/responses"
-	"github.com/russross/blackfriday"
+	"strconv"
 )
-
-var base string
-
-var templatePath = ".md2web.template.html"
 
 const (
-	mainName  = "main"
-	nameKey   = "name"
-	extension = ".md"
+	// template file name.
+	template = ".md2web.template.html"
+	// defaultPort for server to listen at.
+	defaultPort = 5000
 )
 
+// main runs the server on the given port or 5000 by default.
 func main() {
+	base, err := getBase()
+	if err != nil {
+		log.Fatal(err)
+	}
+	home, err := getHome()
+	if err != nil {
+		log.Fatal(err)
+	}
+	port, err := getPort(defaultPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+	newServer(base, home+template).Run(port)
+}
+
+// getBase gets the base folder the trim.Server is running from.
+func getBase() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	base = filepath.Base(cwd)
-	templatePath = addHome(templatePath)
-	server := trim.NewServer()
-	server.SetHandle404(handlers.HandleHTML404)
-	server.AddDecorator(decorators.CacheDecorator(time.Hour))
-	server.AddDecorator(decorators.AllowDecorator([]string{"GET"}))
-	server.AddApplication(newApplication())
-	server.Run(5000)
+	return filepath.Base(cwd), nil
 }
 
-func newApplication() *trim.Application {
-	application := trim.NewApplication("")
-	application.AddController(newController())
-	application.SetHandle404(handlers.HandleHTML404)
-	return application
-}
-
-type controller struct {
-	trim.BareController
-}
-
-func newController() *controller {
-	return &controller{}
-}
-
-// Path ...
-func (c *controller) Path() string {
-	return fmt.Sprintf("/<%s />", nameKey)
-}
-
-// Handle ...
-func (c *controller) Handle(request *trim.Request) trim.Response {
-	name := request.PathArguments()[nameKey]
-	return renderPage(request, name, "", trim.Code(http.StatusOK))
-}
-
-func buildPath(name string) string {
-	path := name
-	if path == "" || path[len(path)-1] == '/' {
-		path += mainName
-	}
-	path += extension
-	return path
-}
-
-func renderPage(
-	request *trim.Request,
-	name, message string,
-	code trim.Code,
-) trim.Response {
-	content, err := ioutil.ReadFile(buildPath(name))
-	if err != nil {
-		if name == "" {
-			return handlers.HandleHTML404(request)
-		}
-		return renderPage(
-			request,
-			"",
-			fmt.Sprintf("Page at '/%s' doesn't exist.", name),
-			trim.Code(http.StatusNotFound),
-		)
-	}
-	result := string(blackfriday.MarkdownCommon(content))
-	return responses.NewTemplateResponse(
-		templatePath,
-		responses.TemplateArguments{
-			"base":    base,
-			"title":   linkify(name),
-			"message": message,
-			"links":   links(name),
-			"content": result,
-		},
-		code,
-	)
-}
-
-func linkify(name string) string {
-	pattern := "<a href=\"%s\">%s</a>"
-	name = "/" + name
-	link := ""
-	i := 0
-	var j int
-	for j = 0; j < len(name); j++ {
-		if name[j] == '/' {
-			link += fmt.Sprintf(pattern, name[:j+1], name[i:j+1])
-			i = j + 1
-		}
-	}
-	link += fmt.Sprintf(pattern, name[:j], name[i:j])
-	return link
-}
-
-func links(name string) []string {
-	pattern := "<a href=\"%s\">%s</a>"
-	path := "./" + name
-	path = path[:strings.LastIndex(path, "/")+1]
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil
-	}
-	var links []string
-	width := len(extension)
-	for _, file := range files {
-		if file.Name() != "main.md" {
-			link := "/" + name
-			target := file.Name()
-			if target[len(file.Name())-width:] == extension {
-				target = target[:len(file.Name())-width]
-				link += target
-			} else {
-				link += target + "/"
-			}
-			links = append(
-				links,
-				fmt.Sprintf(pattern, link, target),
-			)
-		}
-	}
-	return links
-}
-
-func addHome(path string) string {
+// getHome returns the user's home directory or an error if it can't be
+// retrieved.
+func getHome() (string, error) {
 	usr, err := user.Current()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	return usr.HomeDir + "/" + path
+	return usr.HomeDir, nil
+}
+
+// getPort returns the port to run the server at or the default port if no
+// arguments are given to the program.
+func getPort(defaultPort int) (int, error) {
+	port := defaultPort
+	if len(os.Args) > 2 {
+		return -1, errors.New("Too many arguments.")
+	}
+	if len(os.Args) == 2 {
+		portArg := os.Args[1]
+		portVal, err := strconv.Atoi(portArg)
+		if err != nil {
+			return -1, err
+		}
+		port = portVal
+	}
+	return port, nil
 }
