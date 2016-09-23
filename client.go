@@ -125,7 +125,6 @@ func (c *clientController) links(name string) []string {
 	}
 	name = name[:strings.LastIndex(name, "/")+1]
 	var links []string
-	links = append(links, fmt.Sprintf(pattern, path[1:], "."))
 	for _, file := range files {
 		if file.Name() != "main.md" && file.Name() != c.static {
 			link := "/" + name

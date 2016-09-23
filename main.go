@@ -11,11 +11,11 @@ import (
 	"strconv"
 )
 
+// TODO: Put applications in own packages so they are black-box testable.
+
 const (
 	// template file name.
 	template = ".md2web.template.html"
-	// defaultPort for server to listen at.
-	defaultPort = 5000
 	// static file folder.
 	static = "static"
 )
@@ -30,11 +30,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	port, err := getPort(defaultPort)
+	domain, err := getDomain()
+	port, err := getPort()
 	if err != nil {
 		log.Fatal(err)
 	}
-	newServer(base, home+"/"+template, static, port).Run(port)
+	newServer(domain, base, home+"/"+template, static, port).Run(port)
 }
 
 // getBase gets the base folder the trim.Server is running from.
@@ -56,20 +57,23 @@ func getHome() (string, error) {
 	return usr.HomeDir, nil
 }
 
-// getPort returns the port to run the server at or the default port if no
-// arguments are given to the program.
-func getPort(defaultPort int) (int, error) {
-	port := defaultPort
-	if len(os.Args) > 2 {
-		return -1, errors.New("Too many arguments.")
+// getDomain to listen at.
+func getDomain() (string, error) {
+	if len(os.Args) != 3 {
+		return "", errors.New("Usage: md2web <domain> <port>")
 	}
-	if len(os.Args) == 2 {
-		portArg := os.Args[1]
-		portVal, err := strconv.Atoi(portArg)
-		if err != nil {
-			return -1, err
-		}
-		port = portVal
+	return os.Args[1], nil
+}
+
+// getPort to listen at.
+func getPort() (int, error) {
+	if len(os.Args) != 3 {
+		return -1, errors.New("Usage: md2web <domain> <port>")
 	}
-	return port, nil
+	portArg := os.Args[2]
+	portVal, err := strconv.Atoi(portArg)
+	if err != nil {
+		return -1, err
+	}
+	return portVal, nil
 }

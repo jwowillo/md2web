@@ -9,6 +9,3 @@ Type `make`.
 
 ## Run
 Run `md2web`.
-
-## TODO
-* Add customization support.
