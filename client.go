@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jwowillo/trim"
@@ -17,7 +18,7 @@ import (
 // newClientApplication creates a md2web trim.Application running from the given
 // base folder which uses the given template file.
 func newClientApplication(
-	base, template, static string,
+	base, template, static, domain string,
 	port int,
 ) *trim.Application {
 	application := trim.NewApplication("")
@@ -25,6 +26,7 @@ func newClientApplication(
 		base,
 		template,
 		static,
+		domain,
 		port,
 	))
 	return application
@@ -33,20 +35,21 @@ func newClientApplication(
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.BareController
-	base, template, static string
-	port                   int
+	base, template, static, domain string
+	port                           int
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
-	base, template, static string,
+	base, template, static, domain string,
 	port int,
 ) *clientController {
 	return &clientController{
 		template: template,
 		base:     base,
 		static:   static,
+		domain:   domain,
 		port:     port,
 	}
 }
@@ -62,7 +65,10 @@ func (c *clientController) Path() string {
 // the path.
 func (c *clientController) Handle(request *trim.Request) trim.Response {
 	name := request.PathArguments()["name"]
-	cdn := "http://cdn." + request.Host()
+	cdn := "http://cdn." + c.domain
+	if c.port != 80 {
+		cdn += ":" + strconv.Itoa(c.port)
+	}
 	response, err := c.renderPage(name, "", trim.Code(http.StatusOK), cdn)
 	if err != nil {
 		return handlers.HandleHTML404(request)

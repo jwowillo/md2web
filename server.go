@@ -19,6 +19,7 @@ func newServer(domain, base, template, static string, port int) *trim.Server {
 		base,
 		template,
 		static,
+		domain,
 		port,
 	))
 	server.AddApplication(newCDNApplication(static))
