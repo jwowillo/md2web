@@ -62,7 +62,8 @@ func (c *clientController) Path() string {
 // the path.
 func (c *clientController) Handle(request *trim.Request) trim.Response {
 	name := request.PathArguments()["name"]
-	response, err := c.renderPage(name, "", trim.Code(http.StatusOK))
+	cdn := "http://cdn." + request.Host()
+	response, err := c.renderPage(name, "", trim.Code(http.StatusOK), cdn)
 	if err != nil {
 		return handlers.HandleHTML404(request)
 	}
@@ -76,40 +77,48 @@ func (c *clientController) Handle(request *trim.Request) trim.Response {
 func (c *clientController) renderPage(
 	name, message string,
 	code trim.Code,
+	cdn string,
 ) (trim.Response, error) {
 	if filepath.Base(name) == c.static {
-		return c.errorResponse(name)
+		return c.errorResponse(name, cdn)
 	}
 	if filepath.Base(name) == "main" {
-		return c.errorResponse(name)
+		return c.errorResponse(name, cdn)
 	}
 	content, err := ioutil.ReadFile(buildPath(name))
 	if err != nil {
 		if name == "" {
 			return nil, errors.New("Can't read file.")
 		}
-		return c.errorResponse(name)
+		return c.errorResponse(name, cdn)
 	}
+	md := string(blackfriday.MarkdownCommon(content))
+	md = strings.Replace(md, "{{ cdn }}", cdn, -1)
 	return responses.NewTemplateResponse(
 		c.template,
 		responses.TemplateArguments{
+			"cdn":     cdn,
 			"base":    c.base,
 			"title":   linkify(name),
 			"message": message,
 			"links":   c.links(name),
 			"port":    c.port,
-			"content": string(blackfriday.MarkdownCommon(content)),
+			"content": md,
 		},
 		code,
 	), nil
 }
 
 // errorResponse returns the result of calling renderPage with not-found data.
-func (c *clientController) errorResponse(name string) (trim.Response, error) {
+func (c *clientController) errorResponse(
+	name,
+	cdn string,
+) (trim.Response, error) {
 	return c.renderPage(
 		"",
 		fmt.Sprintf("Page at '/%s doesn't exist.", name),
 		trim.Code(http.StatusNotFound),
+		cdn,
 	)
 }
 
