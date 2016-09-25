@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>{{ base }}</title>
     <link rel="icon" href="{{ cdn }}/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 		<style>
 			* {
 				font-family: Helvetica, Arial, Sans-Serif;
@@ -16,6 +17,12 @@
 			p {
         line-height: 1.5em;
 			}
+      pre {
+        border: 2px solid #262626;
+        padding: 5px;
+        background-color: #FFF5E6;
+        overflow-x: scroll;
+      }
 			code {
 				font-family: monospace;
 			}
@@ -67,9 +74,11 @@
           {{ link | safe }}
         {% endfor %}
       </nav>
+      {% if message %}
       <aside>
         {{ message }}
       </aside>
+      {% endif %}
       <section>
         {{ content | safe }}
       </section>
