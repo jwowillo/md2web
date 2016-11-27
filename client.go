@@ -17,11 +17,17 @@ import (
 	"github.com/russross/blackfriday"
 )
 
-// Use init thingy majibby to find home directory and prepend to the
-// whatterstuff.
-
-// NewClientApplication creates a md2web trim.Application running from the given
-// base folder which uses the given template file.
+// NewClientApplication creates a md2web trim.Application with the domain and
+// port information of the CDNApplication's server.
+//
+// This information is required to substitute the proper information into the
+// template page to fetch static assets.
+//
+// The constrctor also accepts an excludes parameter. All files in the list will
+// not be shown on the website.
+//
+// The user's home directory is required to find the installed template file. If
+// the home directory can't be found properly, an error is returned.
 func NewClientApplication(
 	domain string,
 	port int,
@@ -72,6 +78,7 @@ func newClientController(
 //
 // Always a variable path which captures the entire path into the key 'name'.
 func (c *clientController) Path() string {
+	// return "/:name*
 	return "/<name />"
 }
 
@@ -92,8 +99,6 @@ func (c *clientController) Handle(request *trim.Request) trim.Response {
 
 // renderPage based on the name of the markdown file, the message to display on
 // the page, and code meant for the controller to return.
-//
-// The trim.Request is passed to handle
 func (c *clientController) renderPage(
 	name, message string,
 	code trim.Code,

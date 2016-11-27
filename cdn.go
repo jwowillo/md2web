@@ -7,8 +7,8 @@ import (
 	"github.com/jwowillo/trim/responses"
 )
 
-// NewCDNApplication creates a new trim.Application which serves from the given
-// folder.
+// NewCDNApplication creates a new trim.Application which serves static files
+// from the 'static' folder.
 func NewCDNApplication() *trim.Application {
 	application := trim.NewApplication("cdn")
 	application.AddController(newCDNController())
