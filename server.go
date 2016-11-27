@@ -1,4 +1,4 @@
-package main
+package md2web
 
 import (
 	"time"
@@ -8,9 +8,13 @@ import (
 	"github.com/jwowillo/trim/handlers"
 )
 
-// newServer creates a trim.Server running from the given base folder which uses
+// NewServer creates a trim.Server running from the given base folder which uses
 // the given template file and serves static files from the given folder.
-func newServer(domain, base, template, static string, port int) *trim.Server {
+func NewServer(
+	domain string,
+	port int,
+	excludes []string,
+) (*trim.Server, error) {
 	server := trim.NewServer(domain)
 	server.SetHandle404(handlers.NewHTML404Handler())
 	server.AddDecoratorFactory(decorators.NewCacheDecoratorFactory(
@@ -19,13 +23,11 @@ func newServer(domain, base, template, static string, port int) *trim.Server {
 	server.AddDecoratorFactory(decorators.NewAllowDecoratorFactory(
 		[]string{"GET"},
 	))
-	server.AddApplication(newClientApplication(
-		base,
-		template,
-		static,
-		domain,
-		port,
-	))
-	server.AddApplication(newCDNApplication(static))
-	return server
+	client, err := NewClientApplication(domain, port, excludes)
+	if err != nil {
+		return nil, err
+	}
+	server.AddApplication(client)
+	server.AddApplication(NewCDNApplication())
+	return server, nil
 }

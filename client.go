@@ -1,56 +1,70 @@
-package main
+package md2web
 
 import (
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/jwowillo/containers"
 	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/handlers"
 	"github.com/jwowillo/trim/responses"
 	"github.com/russross/blackfriday"
 )
 
-// newClientApplication creates a md2web trim.Application running from the given
+// Use init thingy majibby to find home directory and prepend to the
+// whatterstuff.
+
+// NewClientApplication creates a md2web trim.Application running from the given
 // base folder which uses the given template file.
-func newClientApplication(
-	base, template, static, domain string,
+func NewClientApplication(
+	domain string,
 	port int,
-) *trim.Application {
+	excludes []string,
+) (*trim.Application, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
 	application := trim.NewApplication("")
 	application.AddController(newClientController(
-		base,
-		template,
-		static,
-		domain,
-		port,
+		domain, port, excludes, usr.HomeDir,
 	))
-	return application
+	return application, nil
 }
 
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.BareController
-	base, template, static, domain string
-	port                           int
+	domain, home string
+	port         int
+	excludes     *containers.HashSet
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
-	base, template, static, domain string,
+	domain string,
 	port int,
+	excludes []string,
+	home string,
 ) *clientController {
+	set := containers.NewHashSet()
+	for _, exclude := range excludes {
+		set.Add(exclude)
+	}
+	set.Add("static")
+	set.Add("main.md")
 	return &clientController{
-		template: template,
-		base:     base,
-		static:   static,
 		domain:   domain,
 		port:     port,
+		excludes: set,
+		home:     home,
 	}
 }
 
@@ -65,7 +79,7 @@ func (c *clientController) Path() string {
 // the path.
 func (c *clientController) Handle(request *trim.Request) trim.Response {
 	name := request.PathArguments()["name"]
-	cdn := "http://cdn." + c.domain
+	cdn := fmt.Sprintf("http://cdn.%s", c.domain)
 	if c.port != 80 {
 		cdn += ":" + strconv.Itoa(c.port)
 	}
@@ -85,7 +99,7 @@ func (c *clientController) renderPage(
 	code trim.Code,
 	cdn string,
 ) (trim.Response, error) {
-	if filepath.Base(name) == c.static {
+	if filepath.Base(name) == "static" {
 		return c.errorResponse(name, cdn)
 	}
 	if filepath.Base(name) == "main" {
@@ -100,11 +114,15 @@ func (c *clientController) renderPage(
 	}
 	md := string(blackfriday.MarkdownCommon(content))
 	md = strings.Replace(md, "{{ cdn }}", cdn, -1)
+	base := filepath.Base(name)
+	if base == "." {
+		base = "home"
+	}
 	return responses.NewTemplateResponse(
-		c.template,
+		fmt.Sprintf("%s/.md2web.template.html", c.home),
 		responses.TemplateArguments{
 			"cdn":     cdn,
-			"base":    c.base,
+			"base":    base,
 			"title":   linkify(name),
 			"message": message,
 			"links":   c.links(name),
@@ -141,7 +159,7 @@ func (c *clientController) links(name string) []string {
 	name = name[:strings.LastIndex(name, "/")+1]
 	var links []string
 	for _, file := range files {
-		if file.Name() != "main.md" && file.Name() != c.static {
+		if !c.excludes.Contains(file.Name()) {
 			link := "/" + name
 			target := file.Name()
 			if target[len(file.Name())-3:] == ".md" {
