@@ -1,9 +1,7 @@
-// Package main runs a server which serves markdown files and folders as a
-// website.
+// Package main runs a server containing the md2web trim.Application.
 package main
 
 import (
-	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -11,13 +9,13 @@ import (
 	"github.com/jwowillo/md2web"
 )
 
-// main runs the server on the given port or 5000 by default.
+var (
+	domain string
+	port   int
+)
+
+// main runs the server on the given domain and port.
 func main() {
-	domain, err := getDomain()
-	port, err := getPort()
-	if err != nil {
-		log.Fatal(err)
-	}
 	server, err := md2web.NewServer(domain, port, []string{"README.md"})
 	if err != nil {
 		log.Fatal(err)
@@ -25,23 +23,19 @@ func main() {
 	server.Run(port)
 }
 
-// getDomain to listen at.
-func getDomain() (string, error) {
+// init parses the domain and port from the command line.
+func init() {
+	message := []byte("Usage: md2web <domain> <port:int>\n")
 	if len(os.Args) != 3 {
-		return "", errors.New("Usage: md2web <domain> <port>")
+		os.Stderr.Write(message)
+		os.Exit(1)
 	}
-	return os.Args[1], nil
-}
-
-// getPort to listen at.
-func getPort() (int, error) {
-	if len(os.Args) != 3 {
-		return -1, errors.New("Usage: md2web <domain> <port>")
-	}
+	domain = os.Args[1]
 	portArg := os.Args[2]
 	portVal, err := strconv.Atoi(portArg)
 	if err != nil {
-		return -1, err
+		os.Stderr.Write(message)
+		os.Exit(1)
 	}
-	return portVal, nil
+	port = portVal
 }
