@@ -71,7 +71,7 @@ func (c *clientController) Handle(request *trim.Request) trim.Response {
 	}
 	response, err := c.renderPage(name, "", trim.Code(http.StatusOK), cdn)
 	if err != nil {
-		return handlers.HandleHTML404(request)
+		return handlers.NewHTML404Handler().Handle(request)
 	}
 	return response
 }
