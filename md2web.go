@@ -1,5 +1,4 @@
-// Package md2web contains a constructor for a trim.Application which turns
-// directories of markdown files into a website.
+// Package md2web contains the MD2Web trim.Application.
 package md2web
 
 import (
@@ -15,10 +14,15 @@ import (
 	"github.com/jwowillo/trim/applications"
 )
 
-// New creates a md2web trim.Application which excludes the given files from
-// being shown.
-func New(excs []string) *trim.Application {
-	app := applications.NewWeb()
+// MD2Web is a trim.Applications which turns directories of markdown files and
+// folders into a website.
+type MD2Web struct {
+	*applications.Web
+}
+
+// New creates a MD2Web excluding the provided files.
+func New(excs []string) *MD2Web {
+	app := &MD2Web{applications.Web: applications.NewWeb()}
 	app.RemoveAPI()
 	app.Client().RemoveControllers()
 	app.AddTrimming(trimmings.NewAllow([]string{"GET"}))
@@ -58,27 +62,17 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 	fn := req.PathArg("name")
 	path := buildPath(fn)
 	cdn := req.Context("cdn").(*url.URL).WithoutPath()
-	for k, v := range hl {
-		base := filepath.Base(v)
-		if strings.HasSuffix(base, ".md") {
-			base = base[:len(base)-len(".md")]
-		}
-		hl[k] = base
-	}
+	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	c, err := content(path)
 	args := trim.AnyMap{
 		"name":        filepath.Base(name),
 		"cdn":         cdn,
-		"headerLinks": headerLinks(path, c.excludes),
+		"headerLinks": headerLinks(path),
 		"navLinks":    nl,
 		"content":     strings.Replace(c, "{{ cdn }}", cdn, -1),
 	}
-	exc := c.excludes.Contains(path)
-	for _, part := range strings.Split(path, "/") {
-		exc = exc || c.excludes.Contains(part)
-	}
-	if err != nil || exc {
+	if err != nil {
 		args["headerLinks"] = map[string]string{"/": "/"}
 		args["navLinks"] = nil
 		args["content"] = fmt.Sprintf("%s couldn't be served.", fn)
@@ -92,37 +86,43 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 	return responses.TemplateFromString(Template, m, http.StatusOK)
 }
 
-// headerLinks are files along the provided path except what is in the provided
-// set..
-func headerLinks(path string, excs *containers.Set) []string {
-	var ls []string
+// headerLinks are links to files along the provided path except what is in the
+// provided set map mapped to their link text.
+func headerLinks(path string) map[string]string {
+	ls := map[string]string{"/": "/"}
 	working := ""
 	for _, part := range strings.Split(path[1:]) {
 		working += part
 		if excs.Contains(working) {
-			break
+			return nil, fmt.Errorf("%s excluded", working)
 		}
-		ls = append(ls, working)
+		if strings.HasSuffix(part, ".md") {
+			part = part[:len(part)-len(".md")]
+		}
+		ls[working] = part
 	}
 	return ls
 }
 
-// navLinks are adjacent markdown files and folders to the provided path except
-// what is in the excluded provided set.
+// navLinks are links to adjacent markdown files and folders to the provided
+// path except what is in the excluded provided set mapped to their link text.
 //
 // Returns an error if the directory of the given path can't be read.
-func navLinks(path string, excs *containerse.Set) ([]string, error) {
+func navLinks(path string, excs *containerse.Set) (map[string]string, error) {
 	fs, err := ioutil.ReadDir(filepath.Dir(path))
 	if err != nil {
 		return nil, err
 	}
-	var ls []string
+	ls := make(map[string]string)
 	for _, f := range fs {
 		fn := f.Name()
 		if excs.Contains(fn) || excs.Contains(filepath.Base(fn)) {
 			continue
 		}
-		ls = append(ls, f.Name())
+		if strings.HasSuffix(fn, ".md") {
+			fn = fn[:len(fn)-len(".md")]
+		}
+		ls[f.Name()] = fn
 	}
 	return ls
 }
