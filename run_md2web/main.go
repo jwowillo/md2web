@@ -17,7 +17,8 @@ var (
 
 // main runs the server on the given domain and port.
 func main() {
-	trim.NewServer(domain, port).Serve(md2web.New([]string{"README.md"}))
+	app := md2web.New([]string{"README.md"}).Application
+	trim.NewServer(domain, port).Serve(app)
 }
 
 // init parses the domain and port from the command line.

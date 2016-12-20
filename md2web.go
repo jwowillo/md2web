@@ -12,6 +12,7 @@ import (
 	"github.com/jwowillo/containers"
 	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/applications"
+	"github.com/jwowillo/trim/responses"
 )
 
 // MD2Web is a trim.Applications which turns directories of markdown files and
@@ -22,11 +23,10 @@ type MD2Web struct {
 
 // New creates a MD2Web excluding the provided files.
 func New(excs []string) *MD2Web {
-	app := &MD2Web{applications.Web: applications.NewWeb()}
+	app := &MD2Web{Web: applications.NewWeb()}
 	app.RemoveAPI()
-	app.Client().RemoveControllers()
-	app.AddTrimming(trimmings.NewAllow([]string{"GET"}))
-	set := containers.NewSet()
+	app.Client().ClearControllers()
+	set := containers.NewHashSet()
 	for _, exc := range excs {
 		set.Add(exc)
 	}
@@ -42,7 +42,7 @@ type clientController struct {
 
 // newClientController creates a controller with the given template file and
 // base folder.
-func newClientController(excs *containers.Set) *clientController {
+func newClientController(excs *containers.HashSet) *clientController {
 	excs.Add("static")
 	excs.Add("main.md")
 	return &clientController{excludes: excs}
@@ -59,39 +59,46 @@ func (c *clientController) Path() string {
 // Handle trim.Request by rendering the markdown page at the file name stored in
 // the path.
 func (c *clientController) Handle(req *trim.Request) trim.Response {
-	fn := req.PathArg("name")
+	fn := req.URLArg("name")
 	path := buildPath(fn)
-	cdn := req.Context("cdn").(*url.URL).WithoutPath()
+	cdn := req.Context("cdn").(*url.URL).String()
 	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
-	c, err := content(path)
+	bs, err := content(path)
 	args := trim.AnyMap{
-		"name":        filepath.Base(name),
+		"name":        filepath.Base(fn),
 		"cdn":         cdn,
-		"headerLinks": headerLinks(path),
+		"headerLinks": hl,
 		"navLinks":    nl,
-		"content":     strings.Replace(c, "{{ cdn }}", cdn, -1),
+		"content": strings.Replace(
+			string(bs),
+			"{{ cdn }}",
+			cdn,
+			-1,
+		),
 	}
 	if err != nil {
 		args["headerLinks"] = map[string]string{"/": "/"}
 		args["navLinks"] = nil
 		args["content"] = fmt.Sprintf("%s couldn't be served.", fn)
-		code = http.StatusInternalServerError
-		return responses.TemplateFromString(
+		return responses.NewTemplateFromString(
 			Template,
 			args,
 			http.StatusInternalServerError,
 		)
 	}
-	return responses.TemplateFromString(Template, m, http.StatusOK)
+	return responses.NewTemplateFromString(Template, args, http.StatusOK)
 }
 
 // headerLinks are links to files along the provided path except what is in the
 // provided set map mapped to their link text.
-func headerLinks(path string) map[string]string {
+func headerLinks(
+	path string,
+	excs *containers.HashSet,
+) (map[string]string, error) {
 	ls := map[string]string{"/": "/"}
 	working := ""
-	for _, part := range strings.Split(path[1:]) {
+	for _, part := range strings.Split(path[1:], "/") {
 		working += part
 		if excs.Contains(working) {
 			return nil, fmt.Errorf("%s excluded", working)
@@ -101,14 +108,17 @@ func headerLinks(path string) map[string]string {
 		}
 		ls[working] = part
 	}
-	return ls
+	return ls, nil
 }
 
 // navLinks are links to adjacent markdown files and folders to the provided
 // path except what is in the excluded provided set mapped to their link text.
 //
 // Returns an error if the directory of the given path can't be read.
-func navLinks(path string, excs *containerse.Set) (map[string]string, error) {
+func navLinks(
+	path string,
+	excs *containers.HashSet,
+) (map[string]string, error) {
 	fs, err := ioutil.ReadDir(filepath.Dir(path))
 	if err != nil {
 		return nil, err
@@ -124,13 +134,13 @@ func navLinks(path string, excs *containerse.Set) (map[string]string, error) {
 		}
 		ls[f.Name()] = fn
 	}
-	return ls
+	return ls, nil
 }
 
 // content of file at path.
 //
 // Returns an error if the file isn't a markdown file.
-func content(path string) (string, error) {
+func content(path string) ([]byte, error) {
 	if filepath.Ext(path) != ".md" {
 		return nil, fmt.Errorf("%s isn't a markdown file", path)
 	}
@@ -138,7 +148,7 @@ func content(path string) (string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return string(bs)
+	return bs, nil
 }
 
 // buildPath to markdown file represented by given name.
