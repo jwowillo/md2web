@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +12,8 @@ import (
 	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/applications"
 	"github.com/jwowillo/trim/responses"
+	"github.com/jwowillo/trim/url"
+	"github.com/russross/blackfriday"
 )
 
 // MD2Web is a trim.Applications which turns directories of markdown files and
@@ -25,12 +26,14 @@ type MD2Web struct {
 func New(excs []string) *MD2Web {
 	app := &MD2Web{Web: applications.NewWeb()}
 	app.RemoveAPI()
-	app.Client().ClearControllers()
+	app.ClearControllers()
 	set := containers.NewHashSet()
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	app.AddController(newClientController(set))
+	if err := app.AddController(newClientController(set)); err != nil {
+		panic(err)
+	}
 	return app
 }
 
@@ -44,7 +47,8 @@ type clientController struct {
 // base folder.
 func newClientController(excs *containers.HashSet) *clientController {
 	excs.Add("static")
-	excs.Add("main.md")
+	excs.Add(".git")
+	excs.Add(".gitignore")
 	return &clientController{excludes: excs}
 }
 
@@ -59,14 +63,14 @@ func (c *clientController) Path() string {
 // Handle trim.Request by rendering the markdown page at the file name stored in
 // the path.
 func (c *clientController) Handle(req *trim.Request) trim.Response {
-	fn := req.URLArg("name")
+	fn := req.URL().Path()
 	path := buildPath(fn)
 	cdn := req.Context("cdn").(*url.URL).String()
 	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
 	args := trim.AnyMap{
-		"name":        filepath.Base(fn),
+		"title":       filepath.Base(fn),
 		"cdn":         cdn,
 		"headerLinks": hl,
 		"navLinks":    nl,
@@ -95,18 +99,26 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 func headerLinks(
 	path string,
 	excs *containers.HashSet,
-) (map[string]string, error) {
-	ls := map[string]string{"/": "/"}
+) ([]linkPair, error) {
+	ls := []linkPair{linkPair{Real: "/", Fake: "/"}}
 	working := ""
-	for _, part := range strings.Split(path[1:], "/") {
+	for _, part := range strings.Split(filepath.Dir(path), "/") {
+		if part == "." {
+			continue
+		}
 		working += part
 		if excs.Contains(working) {
 			return nil, fmt.Errorf("%s excluded", working)
 		}
+		if part == "main.md" {
+			break
+		}
 		if strings.HasSuffix(part, ".md") {
 			part = part[:len(part)-len(".md")]
+		} else {
+			part += "/"
 		}
-		ls[working] = part
+		ls = append(ls, linkPair{Real: "/" + working + "/", Fake: part})
 	}
 	return ls, nil
 }
@@ -118,21 +130,34 @@ func headerLinks(
 func navLinks(
 	path string,
 	excs *containers.HashSet,
-) (map[string]string, error) {
+) ([]linkPair, error) {
 	fs, err := ioutil.ReadDir(filepath.Dir(path))
 	if err != nil {
 		return nil, err
 	}
-	ls := make(map[string]string)
+	var ls []linkPair
 	for _, f := range fs {
 		fn := f.Name()
 		if excs.Contains(fn) || excs.Contains(filepath.Base(fn)) {
 			continue
 		}
-		if strings.HasSuffix(fn, ".md") {
+		key := f.Name()
+		switch mode := f.Mode(); {
+		case mode.IsDir():
+			key = key + "/"
+		case mode.IsRegular():
+			if !strings.HasSuffix(fn, ".md") {
+				continue
+			}
+			if fn == "main.md" {
+				continue
+			}
+		}
+		if strings.HasSuffix(key, ".md") {
+			key = key[:len(key)-len(".md")]
 			fn = fn[:len(fn)-len(".md")]
 		}
-		ls[f.Name()] = fn
+		ls = append(ls, linkPair{Real: key, Fake: fn})
 	}
 	return ls, nil
 }
@@ -148,12 +173,12 @@ func content(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bs, nil
+	return blackfriday.MarkdownCommon(bs), nil
 }
 
 // buildPath to markdown file represented by given name.
 func buildPath(name string) string {
-	path := name
+	path := "." + name
 	if path == "" || path[len(path)-1] == '/' {
 		path += "main"
 	}
@@ -168,7 +193,7 @@ const Template = `
   <head>
     <meta charset="utf-8">
     <title>{{ title }}</title>
-    <link rel="icon" href="{{ cdn }}/favicon.png">
+    <link rel="icon" href="http://{{ cdn }}/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * {
@@ -176,7 +201,7 @@ const Template = `
          color: #262626;
       }
       #wrapper {
-        max-width: 720px;
+        max-width: 840px;
         margin: 0 auto;
       }
       p {
@@ -228,13 +253,13 @@ const Template = `
   <body>
     <div id="wrapper">
       <header>
-      	{% for k, v in headerLinks %}
-      	  <a href="{{ k }}">{{ v }}</a>
+      	{% for p in headerLinks %}
+      	  <a href="{{ p.Real }}">{{ p.Fake }}</a>
       	{% endfor %}
       </header>
       <nav>
-        {% for k, v in navLinks %}
-          <a href="{{ k }}">{{ v }}</a>
+        {% for p in navLinks %}
+          <a href="{{ p.Real }}">{{ p.Fake }}</a>
         {% endfor %}
       </nav>
       <section>
@@ -244,3 +269,8 @@ const Template = `
   </body>
 </html>
 `
+
+// linkPair is a pair of a real and a fake link.
+type linkPair struct {
+	Real, Fake string
+}
