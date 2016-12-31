@@ -37,6 +37,29 @@ func New(excs []string) *MD2Web {
 	return app
 }
 
+// NewDebug creates an MD2Web that doesn't cache.
+func NewDebug(excs []string) *MD2Web {
+	cf := applications.ClientDefault
+	cf.CacheDuration = 0
+	app := &MD2Web{
+		Web: applications.NewWebWithConfig(
+			cf,
+			applications.APIDefault,
+			applications.CDNDefault,
+		),
+	}
+	app.RemoveAPI()
+	app.ClearControllers()
+	set := containers.NewHashSet()
+	for _, exc := range excs {
+		set.Add(exc)
+	}
+	if err := app.AddController(newClientController(set)); err != nil {
+		panic(err)
+	}
+	return app
+}
+
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.Bare
@@ -238,6 +261,7 @@ const Template = `
         text-align: center;
       }
       nav a {
+        font-size: 1.2em;
         text-decoration: none;
         padding-right: 10px;
       }
