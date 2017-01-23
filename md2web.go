@@ -10,8 +10,8 @@ import (
 
 	"github.com/jwowillo/pack"
 	"github.com/jwowillo/trim"
-	"github.com/jwowillo/trim/applications"
-	"github.com/jwowillo/trim/responses"
+	"github.com/jwowillo/trim/application"
+	"github.com/jwowillo/trim/response"
 	"github.com/jwowillo/trim/url"
 	"github.com/russross/blackfriday"
 )
@@ -19,12 +19,12 @@ import (
 // MD2Web is a trim.Applications which turns directories of markdown files and
 // folders into a website.
 type MD2Web struct {
-	*applications.Web
+	*application.Web
 }
 
 // New creates a MD2Web excluding the provided files which has the given host.
 func New(h string, excs []string) *MD2Web {
-	app := &MD2Web{Web: applications.NewWeb()}
+	app := &MD2Web{Web: application.NewWeb()}
 	app.RemoveAPI()
 	app.ClearControllers()
 	set := pack.NewHashSet(pack.StringHasher)
@@ -33,8 +33,8 @@ func New(h string, excs []string) *MD2Web {
 	}
 	cdn := app.URLFor(
 		url.Pattern{
-			app.CDN().Subdomain(),
-			app.CDN().BasePath(),
+			app.Static().Subdomain(),
+			app.Static().BasePath(),
 		}, h,
 	).String()
 	if err := app.AddController(newClientController(cdn, set)); err != nil {
@@ -45,13 +45,13 @@ func New(h string, excs []string) *MD2Web {
 
 // NewDebug creates an MD2Web that doesn't cache which has the given host.
 func NewDebug(h string, excs []string) *MD2Web {
-	cf := applications.ClientDefault
+	cf := application.ClientDefault
 	cf.CacheDuration = 0
 	app := &MD2Web{
-		Web: applications.NewWebWithConfig(
+		Web: application.NewWebWithConfig(
 			cf,
-			applications.APIDefault,
-			applications.CDNDefault,
+			application.APIDefault,
+			application.StaticDefault,
 		),
 	}
 	app.RemoveAPI()
@@ -62,8 +62,8 @@ func NewDebug(h string, excs []string) *MD2Web {
 	}
 	cdn := app.URLFor(
 		url.Pattern{
-			app.CDN().Subdomain(),
-			app.CDN().BasePath(),
+			app.Static().Subdomain(),
+			app.Static().BasePath(),
 		}, h,
 	).String()
 	if err := app.AddController(newClientController(cdn, set)); err != nil {
@@ -76,14 +76,14 @@ func NewDebug(h string, excs []string) *MD2Web {
 type clientController struct {
 	trim.Bare
 	cdn      string
-	excludes *pack.HashSet
+	excludes pack.Set
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
 	cdn string,
-	excs *pack.HashSet,
+	excs pack.Set,
 ) *clientController {
 	excs.Add("static")
 	excs.Add(".git")
@@ -123,21 +123,18 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 		args["headerLinks"] = map[string]string{"/": "/"}
 		args["navLinks"] = nil
 		args["content"] = fmt.Sprintf("%s couldn't be served.", fn)
-		return responses.NewTemplateFromString(
+		return response.NewTemplateFromString(
 			Template,
 			args,
 			http.StatusInternalServerError,
 		)
 	}
-	return responses.NewTemplateFromString(Template, args, http.StatusOK)
+	return response.NewTemplateFromString(Template, args, http.StatusOK)
 }
 
 // headerLinks are links to files along the provided path except what is in the
 // provided set map mapped to their link text.
-func headerLinks(
-	path string,
-	excs *pack.HashSet,
-) ([]linkPair, error) {
+func headerLinks(path string, excs pack.Set) ([]linkPair, error) {
 	ls := []linkPair{linkPair{Real: "/", Fake: "/"}}
 	working := ""
 	for _, part := range strings.Split(filepath.Dir(path), "/") {
@@ -165,7 +162,7 @@ func headerLinks(
 // path except what is in the excluded provided set mapped to their link text.
 //
 // Returns an error if the directory of the given path can't be read.
-func navLinks(path string, excs *pack.HashSet) ([]linkPair, error) {
+func navLinks(path string, excs pack.Set) ([]linkPair, error) {
 	fs, err := ioutil.ReadDir(filepath.Dir(path))
 	if err != nil {
 		return nil, err
