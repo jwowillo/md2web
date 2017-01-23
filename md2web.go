@@ -31,13 +31,13 @@ func New(h string, excs []string) *MD2Web {
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	cdn := app.URLFor(
+	static := app.URLFor(
 		url.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
 	).String()
-	if err := app.AddController(newClientController(cdn, set)); err != nil {
+	if err := app.AddController(newClientController(static, set)); err != nil {
 		panic(err)
 	}
 	return app
@@ -60,13 +60,13 @@ func NewDebug(h string, excs []string) *MD2Web {
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	cdn := app.URLFor(
+	static := app.URLFor(
 		url.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
 	).String()
-	if err := app.AddController(newClientController(cdn, set)); err != nil {
+	if err := app.AddController(newClientController(static, set)); err != nil {
 		panic(err)
 	}
 	return app
@@ -75,20 +75,20 @@ func NewDebug(h string, excs []string) *MD2Web {
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.Bare
-	cdn      string
+	static      string
 	excludes pack.Set
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
-	cdn string,
+	static string,
 	excs pack.Set,
 ) *clientController {
 	excs.Add("static")
 	excs.Add(".git")
 	excs.Add(".gitignore")
-	return &clientController{cdn: cdn, excludes: excs}
+	return &clientController{static: static, excludes: excs}
 }
 
 // Path of the clientController.
@@ -109,13 +109,13 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 	bs, err := content(path)
 	args := trim.AnyMap{
 		"title":       filepath.Base(fn),
-		"cdn":         c.cdn,
+		"static":         c.static,
 		"headerLinks": hl,
 		"navLinks":    nl,
 		"content": strings.Replace(
 			string(bs),
-			"{{ cdn }}",
-			c.cdn,
+			"{{ static }}",
+			c.static,
 			-1,
 		),
 	}
@@ -225,7 +225,7 @@ const Template = `
   <head>
     <meta charset="utf-8">
     <title>{{ title }}</title>
-    <link rel="icon" href="http://{{ cdn }}/favicon.png">
+    <link rel="icon" href="http://{{ static }}/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * {
