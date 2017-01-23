@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jwowillo/containers"
+	"github.com/jwowillo/pack"
 	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/applications"
 	"github.com/jwowillo/trim/responses"
@@ -22,23 +22,29 @@ type MD2Web struct {
 	*applications.Web
 }
 
-// New creates a MD2Web excluding the provided files.
-func New(excs []string) *MD2Web {
+// New creates a MD2Web excluding the provided files which has the given host.
+func New(h string, excs []string) *MD2Web {
 	app := &MD2Web{Web: applications.NewWeb()}
 	app.RemoveAPI()
 	app.ClearControllers()
-	set := containers.NewHashSet()
+	set := pack.NewHashSet(pack.StringHasher)
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	if err := app.AddController(newClientController(set)); err != nil {
+	cdn := app.URLFor(
+		url.Pattern{
+			app.CDN().Subdomain(),
+			app.CDN().BasePath(),
+		}, h,
+	).String()
+	if err := app.AddController(newClientController(cdn, set)); err != nil {
 		panic(err)
 	}
 	return app
 }
 
-// NewDebug creates an MD2Web that doesn't cache.
-func NewDebug(excs []string) *MD2Web {
+// NewDebug creates an MD2Web that doesn't cache which has the given host.
+func NewDebug(h string, excs []string) *MD2Web {
 	cf := applications.ClientDefault
 	cf.CacheDuration = 0
 	app := &MD2Web{
@@ -50,11 +56,17 @@ func NewDebug(excs []string) *MD2Web {
 	}
 	app.RemoveAPI()
 	app.ClearControllers()
-	set := containers.NewHashSet()
+	set := pack.NewHashSet(pack.StringHasher)
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	if err := app.AddController(newClientController(set)); err != nil {
+	cdn := app.URLFor(
+		url.Pattern{
+			app.CDN().Subdomain(),
+			app.CDN().BasePath(),
+		}, h,
+	).String()
+	if err := app.AddController(newClientController(cdn, set)); err != nil {
 		panic(err)
 	}
 	return app
@@ -63,16 +75,20 @@ func NewDebug(excs []string) *MD2Web {
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.Bare
-	excludes *containers.HashSet
+	cdn      string
+	excludes *pack.HashSet
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
-func newClientController(excs *containers.HashSet) *clientController {
+func newClientController(
+	cdn string,
+	excs *pack.HashSet,
+) *clientController {
 	excs.Add("static")
 	excs.Add(".git")
 	excs.Add(".gitignore")
-	return &clientController{excludes: excs}
+	return &clientController{cdn: cdn, excludes: excs}
 }
 
 // Path of the clientController.
@@ -88,19 +104,18 @@ func (c *clientController) Path() string {
 func (c *clientController) Handle(req *trim.Request) trim.Response {
 	fn := req.URL().Path()
 	path := buildPath(fn)
-	cdn := req.Context("cdn").(*url.URL).String()
 	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
 	args := trim.AnyMap{
 		"title":       filepath.Base(fn),
-		"cdn":         cdn,
+		"cdn":         c.cdn,
 		"headerLinks": hl,
 		"navLinks":    nl,
 		"content": strings.Replace(
 			string(bs),
 			"{{ cdn }}",
-			cdn,
+			c.cdn,
 			-1,
 		),
 	}
@@ -121,7 +136,7 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 // provided set map mapped to their link text.
 func headerLinks(
 	path string,
-	excs *containers.HashSet,
+	excs *pack.HashSet,
 ) ([]linkPair, error) {
 	ls := []linkPair{linkPair{Real: "/", Fake: "/"}}
 	working := ""
@@ -150,10 +165,7 @@ func headerLinks(
 // path except what is in the excluded provided set mapped to their link text.
 //
 // Returns an error if the directory of the given path can't be read.
-func navLinks(
-	path string,
-	excs *containers.HashSet,
-) ([]linkPair, error) {
+func navLinks(path string, excs *pack.HashSet) ([]linkPair, error) {
 	fs, err := ioutil.ReadDir(filepath.Dir(path))
 	if err != nil {
 		return nil, err
@@ -221,7 +233,7 @@ const Template = `
     <style>
       * {
          font-family: Helvetica, Arial, Sans-Serif;
-         color: #262626;
+         color: #2b2b2b;
       }
       #wrapper {
         max-width: 840px;

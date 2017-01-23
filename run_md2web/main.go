@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -11,23 +12,27 @@ import (
 )
 
 var (
-	domain string
-	port   int
+	host string
+	port int
 )
 
-// main runs the server on the given domain and port.
+// main runs the server on the given host and port.
 func main() {
-	app := md2web.New([]string{"README.md"}).Application
-	trim.NewServer(domain, port).Serve(app)
+	h := host
+	if host == "localhost" || port != 80 {
+		h += fmt.Sprintf(":%d", port)
+	}
+	app := md2web.New(h, []string{"README.md"}).Application
+	trim.NewServer(h, port).Serve(app)
 }
 
-// init parses the domain and port from the command line.
+// init parses the host and port from the command line.
 func init() {
-	message := []byte("Usage: md2web <domain> <port:int>\n")
+	message := []byte("Usage: md2web <host> <port:int>\n")
 	if len(os.Args) != 3 {
 		log.Fatal(message)
 	}
-	domain = os.Args[1]
+	host = os.Args[1]
 	portArg := os.Args[2]
 	portVal, err := strconv.Atoi(portArg)
 	if err != nil {
