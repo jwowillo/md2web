@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/jwowillo/md2web"
-	"github.com/jwowillo/trim"
+	"github.com/jwowillo/trim/server"
 )
 
 var (
@@ -22,8 +22,7 @@ func main() {
 	if host == "localhost" || port != 80 {
 		h += fmt.Sprintf(":%d", port)
 	}
-	app := md2web.New(h, []string{"README.md"}).Application
-	trim.NewServer(h, port).Serve(app)
+	server.New(host, port).Serve(md2web.New(h, []string{"README.md"}))
 }
 
 // init parses the host and port from the command line.

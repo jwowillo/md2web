@@ -12,7 +12,6 @@ import (
 	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/application"
 	"github.com/jwowillo/trim/response"
-	"github.com/jwowillo/trim/url"
 	"github.com/russross/blackfriday"
 )
 
@@ -32,7 +31,7 @@ func New(h string, excs []string) *MD2Web {
 		set.Add(exc)
 	}
 	static := app.URLFor(
-		url.Pattern{
+		trim.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
@@ -61,7 +60,7 @@ func NewDebug(h string, excs []string) *MD2Web {
 		set.Add(exc)
 	}
 	static := app.URLFor(
-		url.Pattern{
+		trim.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
@@ -75,7 +74,7 @@ func NewDebug(h string, excs []string) *MD2Web {
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	trim.Bare
-	static      string
+	static   string
 	excludes pack.Set
 }
 
@@ -109,7 +108,7 @@ func (c *clientController) Handle(req *trim.Request) trim.Response {
 	bs, err := content(path)
 	args := trim.AnyMap{
 		"title":       filepath.Base(fn),
-		"static":         c.static,
+		"static":      c.static,
 		"headerLinks": hl,
 		"navLinks":    nl,
 		"content": strings.Replace(
