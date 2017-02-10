@@ -231,6 +231,9 @@ const Template = `
          font-family: Helvetica, Arial, Sans-Serif;
          color: #2b2b2b;
       }
+      img {
+      	max-width: 100%;
+      }
       #wrapper {
         max-width: 840px;
         margin: 0 auto;
