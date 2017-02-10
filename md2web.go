@@ -230,6 +230,7 @@ const Template = `
       * {
          font-family: Helvetica, Arial, Sans-Serif;
          color: #2b2b2b;
+         word-wrap: break-word;
       }
       img {
       	max-width: 100%;
