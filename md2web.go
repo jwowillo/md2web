@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"github.com/jwowillo/pack"
-	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/application"
+	"github.com/jwowillo/trim/controller"
+	"github.com/jwowillo/trim/request"
 	"github.com/jwowillo/trim/response"
+	"github.com/jwowillo/trim/url"
 	"github.com/russross/blackfriday"
 )
 
@@ -31,7 +33,7 @@ func New(h string, excs []string) *MD2Web {
 		set.Add(exc)
 	}
 	static := app.URLFor(
-		trim.Pattern{
+		url.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
@@ -60,7 +62,7 @@ func NewDebug(h string, excs []string) *MD2Web {
 		set.Add(exc)
 	}
 	static := app.URLFor(
-		trim.Pattern{
+		url.Pattern{
 			app.Static().Subdomain(),
 			app.Static().BasePath(),
 		}, h,
@@ -73,7 +75,7 @@ func NewDebug(h string, excs []string) *MD2Web {
 
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
-	trim.Bare
+	controller.Bare
 	static   string
 	excludes pack.Set
 }
@@ -100,13 +102,13 @@ func (c *clientController) Path() string {
 
 // Handle trim.Request by rendering the markdown page at the file name stored in
 // the path.
-func (c *clientController) Handle(req *trim.Request) trim.Response {
+func (c *clientController) Handle(req *request.Request) response.Response {
 	fn := req.URL().Path()
 	path := buildPath(fn)
 	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
-	args := trim.AnyMap{
+	args := request.AnyMap{
 		"title":       filepath.Base(fn),
 		"static":      c.static,
 		"headerLinks": hl,
