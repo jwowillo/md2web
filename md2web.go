@@ -108,7 +108,7 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 	hl, err := headerLinks(path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
-	args := request.AnyMap{
+	args := pack.AnyMap{
 		"title":       filepath.Base(fn),
 		"static":      c.static,
 		"headerLinks": hl,
