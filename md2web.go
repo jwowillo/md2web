@@ -32,13 +32,11 @@ func New(h string, excs []string) *MD2Web {
 	for _, exc := range excs {
 		set.Add(exc)
 	}
-	static := app.URLFor(
-		url.Pattern{
-			app.Static().Subdomain(),
-			app.Static().BasePath(),
-		}, h,
-	).String()
-	if err := app.AddController(newClientController(static, set)); err != nil {
+	s := url.NewBuilder(h).
+		SetSubdomain(app.Static().Subdomain()).
+		SetPath(app.Static().BasePath()).
+		Build().String()
+	if err := app.AddController(newClientController(s, set)); err != nil {
 		panic(err)
 	}
 	return app
