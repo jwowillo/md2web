@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	gourl "net/url"
 	"path/filepath"
 	"strings"
 
@@ -24,7 +25,7 @@ type MD2Web struct {
 }
 
 // New creates a MD2Web excluding the provided files which has the given host.
-func New(h string, excs []string) *MD2Web {
+func New(h, bf string, excs []string) *MD2Web {
 	app := &MD2Web{Web: application.NewWeb()}
 	app.RemoveAPI()
 	app.ClearControllers()
@@ -36,14 +37,14 @@ func New(h string, excs []string) *MD2Web {
 		SetSubdomain(app.Static().Subdomain()).
 		SetPath(app.Static().BasePath()).
 		Build().String()
-	if err := app.AddController(newClientController(s, set)); err != nil {
+	if err := app.AddController(newClientController(s, bf, set)); err != nil {
 		panic(err)
 	}
 	return app
 }
 
 // NewDebug creates an MD2Web that doesn't cache which has the given host.
-func NewDebug(h string, excs []string) *MD2Web {
+func NewDebug(h, bf string, excs []string) *MD2Web {
 	cf := application.ClientDefault
 	cf.CacheDuration = 0
 	app := &MD2Web{
@@ -63,7 +64,7 @@ func NewDebug(h string, excs []string) *MD2Web {
 		SetSubdomain(app.Static().Subdomain()).
 		SetPath(app.Static().BasePath()).
 		Build().String()
-	if err := app.AddController(newClientController(s, set)); err != nil {
+	if err := app.AddController(newClientController(s, bf, set)); err != nil {
 		panic(err)
 	}
 	return app
@@ -72,20 +73,20 @@ func NewDebug(h string, excs []string) *MD2Web {
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	controller.Bare
-	static   string
-	excludes pack.Set
+	static, baseFolder string
+	excludes           pack.Set
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
-	static string,
+	static, bf string,
 	excs pack.Set,
 ) *clientController {
 	excs.Add("static")
 	excs.Add(".git")
 	excs.Add(".gitignore")
-	return &clientController{static: static, excludes: excs}
+	return &clientController{static: static, baseFolder: bf, excludes: excs}
 }
 
 // Path of the clientController.
@@ -100,8 +101,9 @@ func (c *clientController) Path() string {
 // the path.
 func (c *clientController) Handle(req *request.Request) response.Response {
 	fn := req.URL().Path()
-	path := buildPath(fn)
-	hl, err := headerLinks(path, c.excludes)
+	path := filepath.Join(c.baseFolder, buildPath(fn))
+	path, err := gourl.QueryUnescape(path)
+	hl, err := headerLinks(c.baseFolder, path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
 	args := pack.AnyMap{
@@ -131,14 +133,14 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 
 // headerLinks are links to files along the provided path except what is in the
 // provided set map mapped to their link text.
-func headerLinks(path string, excs pack.Set) ([]linkPair, error) {
+func headerLinks(bf, path string, excs pack.Set) ([]linkPair, error) {
 	ls := []linkPair{linkPair{Real: "/", Fake: "/"}}
 	working := ""
 	for _, part := range strings.Split(filepath.Dir(path), "/") {
-		if part == "." {
+		if part == "." || part == bf {
 			continue
 		}
-		working += part
+		working = filepath.Join(working, part)
 		if excs.Contains(working) {
 			return nil, fmt.Errorf("%s excluded", working)
 		}

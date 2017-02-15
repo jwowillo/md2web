@@ -22,7 +22,7 @@ func main() {
 	if host == "localhost" || port != 80 {
 		h += fmt.Sprintf(":%d", port)
 	}
-	server.New(host, port).Serve(md2web.New(h, []string{"README.md"}))
+	server.New(host, port).Serve(md2web.New(h, "", []string{"README.md"}))
 }
 
 // init parses the host and port from the command line.
