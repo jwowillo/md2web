@@ -35,8 +35,7 @@ func New(h, bf string, excs []string) *MD2Web {
 	}
 	s := url.NewBuilder(h).
 		SetSubdomain(app.Static().Subdomain()).
-		SetPath(app.Static().BasePath()).
-		Build().String()
+		SetPath(app.Static().BasePath())
 	if err := app.AddController(newClientController(s, bf, set)); err != nil {
 		panic(err)
 	}
@@ -62,8 +61,7 @@ func NewDebug(h, bf string, excs []string) *MD2Web {
 	}
 	s := url.NewBuilder(h).
 		SetSubdomain(app.Static().Subdomain()).
-		SetPath(app.Static().BasePath()).
-		Build().String()
+		SetPath(app.Static().BasePath())
 	if err := app.AddController(newClientController(s, bf, set)); err != nil {
 		panic(err)
 	}
@@ -73,20 +71,26 @@ func NewDebug(h, bf string, excs []string) *MD2Web {
 // clientController which renders markdown page's based on request paths.
 type clientController struct {
 	controller.Bare
-	static, baseFolder string
-	excludes           pack.Set
+	staticBuilder *url.Builder
+	baseFolder    string
+	excludes      pack.Set
 }
 
 // newClientController creates a controller with the given template file and
 // base folder.
 func newClientController(
-	static, bf string,
+	sb *url.Builder,
+	bf string,
 	excs pack.Set,
 ) *clientController {
 	excs.Add("static")
 	excs.Add(".git")
 	excs.Add(".gitignore")
-	return &clientController{static: static, baseFolder: bf, excludes: excs}
+	return &clientController{
+		staticBuilder: sb,
+		baseFolder:    bf,
+		excludes:      excs,
+	}
 }
 
 // Path of the clientController.
@@ -106,15 +110,20 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 	hl, err := headerLinks(c.baseFolder, path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
+	proto := "http://"
+	if req.TLS() != nil {
+		proto = "https://"
+	}
+	static := c.staticBuilder.SetProtocol(proto).Build()
 	args := pack.AnyMap{
 		"title":       filepath.Base(fn),
-		"static":      c.static,
+		"static":      static,
 		"headerLinks": hl,
 		"navLinks":    nl,
 		"content": strings.Replace(
 			string(bs),
 			"{{ static }}",
-			c.static,
+			static.String(),
 			-1,
 		),
 	}
@@ -224,7 +233,7 @@ const Template = `
   <head>
     <meta charset="utf-8">
     <title>{{ title }}</title>
-    <link rel="icon" href="http://{{ static }}/favicon.png">
+    <link rel="icon" href="{{ static }}/favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * {
