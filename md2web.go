@@ -255,7 +255,7 @@ const Template = `
         border: 2px solid #262626;
         padding: 5px;
         background-color: #fff5e6;
-        overflow-x: scroll;
+        overflow-x: auto;
       }
       code {
         font-family: monospace;
@@ -292,6 +292,9 @@ const Template = `
       section {
         padding: 25px;
         font-size: 1.2em;
+      }
+      table {
+      	width: 100%;
       }
     </style>
   </head>
