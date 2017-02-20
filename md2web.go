@@ -245,7 +245,7 @@ const Template = `
       	max-width: 100%;
       }
       #wrapper {
-        max-width: 840px;
+        max-width: 960px;
         margin: 0 auto;
       }
       p {
