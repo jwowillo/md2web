@@ -258,7 +258,7 @@ const Template = `
         overflow-x: auto;
       }
       code {
-        font-family: monospace;
+        font-family: courier;
       }
       body {
         background-color: #fdfdfd;
