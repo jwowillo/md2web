@@ -234,10 +234,11 @@ const Template = `
     <meta charset="utf-8">
     <title>{{ title }}</title>
     <link rel="icon" href="{{ static }}/favicon.png">
+    <link href="https://fonts.googleapis.com/css?family=Droid+Sans|Droid+Sans+Mono" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * {
-         font-family: Helvetica, Arial, Sans-Serif;
+         font-family: 'Droid Sans', sans-serif;
          color: #2b2b2b;
          word-wrap: break-word;
       }
@@ -258,7 +259,7 @@ const Template = `
         overflow-x: auto;
       }
       code {
-        font-family: courier;
+        font-family: 'Droid Sans Mono', monospace;;
       }
       body {
         background-color: #fdfdfd;
