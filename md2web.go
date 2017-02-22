@@ -234,7 +234,6 @@ const Template = `
     <meta charset="utf-8">
     <title>{{ title }}</title>
     <link rel="icon" href="{{ static }}/favicon.png">
-    <link href="https://fonts.googleapis.com/css?family=Droid+Sans|Droid+Sans+Mono" rel="stylesheet" defer>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * {
@@ -315,6 +314,9 @@ const Template = `
         {{ content | safe }}
       </section>
     </div>
+  <style scoped>
+  @import "//fonts.googleapis.com/css?family=Droid+Sans|Droid+Sans+Mono"
+  </style>
   </body>
 </html>
 `
