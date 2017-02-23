@@ -105,6 +105,9 @@ func (c *clientController) Path() string {
 // the path.
 func (c *clientController) Handle(req *request.Request) response.Response {
 	fn := req.URL().Path()
+	if fn == "/robots.txt" {
+		return response.NewStatic("robots.txt")
+	}
 	path := filepath.Join(c.baseFolder, buildPath(fn))
 	path, err := gourl.QueryUnescape(path)
 	hl, err := headerLinks(c.baseFolder, path, c.excludes)
