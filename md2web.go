@@ -113,7 +113,11 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 	hl, err := headerLinks(c.baseFolder, path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
-	static := c.staticBuilder.Build()
+	proto := "http://"
+	if req.TLS() != nil {
+		proto = "https://"
+	}
+	static := c.staticBuilder.SetProtocol(proto).Build()
 	args := pack.AnyMap{
 		"title":       filepath.Base(fn),
 		"static":      static,
