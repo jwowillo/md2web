@@ -110,11 +110,7 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 	hl, err := headerLinks(c.baseFolder, path, c.excludes)
 	nl, err := navLinks(path, c.excludes)
 	bs, err := content(path)
-	proto := "http://"
-	if req.TLS() != nil {
-		proto = "https://"
-	}
-	static := c.staticBuilder.SetProtocol(proto).Build()
+	static := c.staticBuilder.Build()
 	args := pack.AnyMap{
 		"title":       filepath.Base(fn),
 		"static":      static,
@@ -128,13 +124,13 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 		),
 	}
 	if err != nil {
-		args["headerLinks"] = map[string]string{"/": "/"}
+		args["headerLinks"] = []linkPair{{Fake: "/", Real: "/"}}
 		args["navLinks"] = nil
 		args["content"] = fmt.Sprintf("%s couldn't be served.", fn)
 		return response.NewTemplateFromString(
 			Template,
 			args,
-			http.StatusInternalServerError,
+			response.CodeNotFound,
 		)
 	}
 	return response.NewTemplateFromString(Template, args, http.StatusOK)
