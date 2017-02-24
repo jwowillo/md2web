@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/jwowillo/pack"
+	"github.com/jwowillo/trim"
 	"github.com/jwowillo/trim/application"
 	"github.com/jwowillo/trim/controller"
-	"github.com/jwowillo/trim/request"
 	"github.com/jwowillo/trim/response"
 	"github.com/jwowillo/trim/url"
 	"github.com/russross/blackfriday"
@@ -103,7 +103,7 @@ func (c *clientController) Path() string {
 
 // Handle trim.Request by rendering the markdown page at the file name stored in
 // the path.
-func (c *clientController) Handle(req *request.Request) response.Response {
+func (c *clientController) Handle(req trim.Request) trim.Response {
 	fn := req.URL().Path()
 	if fn == "/robots.txt" {
 		return response.NewStatic("robots.txt")
@@ -117,9 +117,10 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 	if req.TLS() != nil {
 		proto = "https://"
 	}
+	title, err := gourl.QueryUnescape(filepath.Base(fn))
 	static := c.staticBuilder.SetProtocol(proto).Build()
 	args := pack.AnyMap{
-		"title":       filepath.Base(fn),
+		"title":       title,
 		"static":      static,
 		"headerLinks": hl,
 		"navLinks":    nl,
@@ -137,7 +138,7 @@ func (c *clientController) Handle(req *request.Request) response.Response {
 		return response.NewTemplateFromString(
 			Template,
 			args,
-			response.CodeNotFound,
+			trim.CodeNotFound,
 		)
 	}
 	return response.NewTemplateFromString(Template, args, http.StatusOK)
