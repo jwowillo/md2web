@@ -249,7 +249,7 @@ const Template = `
       	max-width: 100%;
       }
       #wrapper {
-        max-width: 960px;
+        max-width: 840px;
         margin: 0 auto;
       }
       p {
@@ -262,7 +262,7 @@ const Template = `
         overflow-x: auto;
       }
       code {
-        font-family: 'Droid Sans Mono', monospace;;
+        font-family: 'Droid Sans Mono', monospace;
       }
       body {
         background-color: #fdfdfd;
