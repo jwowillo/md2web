@@ -24,7 +24,7 @@ type MD2Web struct {
 	*application.Web
 }
 
-// New creates a MD2Web excluding the provided files which has the given host.
+// New creates a MD2Web excluding the provided files which has the given URL.
 func New(h, bf string, excs []string) *MD2Web {
 	app := &MD2Web{Web: application.NewWeb()}
 	app.RemoveAPI()
@@ -42,7 +42,7 @@ func New(h, bf string, excs []string) *MD2Web {
 	return app
 }
 
-// NewDebug creates an MD2Web that doesn't cache which has the given host.
+// NewDebug creates an MD2Web that doesn't cache which has the given URL.
 func NewDebug(h, bf string, excs []string) *MD2Web {
 	cf := application.ClientDefault
 	cf.CacheDuration = 0

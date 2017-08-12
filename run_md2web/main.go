@@ -12,22 +12,22 @@ import (
 )
 
 var (
-	host string
+	url  string
 	port int
 )
 
-// main runs the server on the given host and port.
+// main runs the server on the given url and port.
 func main() {
-	h := host
-	if host == "localhost" || port != 80 {
+	h := url
+	if url == "localhost" || port != 80 {
 		h += fmt.Sprintf(":%d", port)
 	}
-	server.New(host, port).Serve(md2web.New(h, "", []string{"README.md"}))
+	server.New(url, port).Serve(md2web.New(h, "", []string{"README.md"}))
 }
 
-// init parses the host and port from the command line.
+// init parses the URL and port from the command line.
 func init() {
-	message := []byte("Usage: md2web <host> <port:int>\n")
+	message := []byte("Usage: md2web <url> <port:int>\n")
 	if len(os.Args) != 3 {
 		log.Fatal(message)
 	}
